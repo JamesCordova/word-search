@@ -23,7 +23,27 @@ OPTIONS_KEY = "Opciones"
 CONTENT_KEY = "Contenido"
 IMAGES_KEY = "Imágenes"
 GAMES_KEY = "Opciones de juego"
-QUESTION_KEY = "Preguntas"
+QUESTION_KEY = "Enunciado"
+WORDS_KEY = "Palabras"
+HIDDEN_WORD_KEY = "Palabra"
+
+#DEFAULT VALUES
+DEFAULT_DATA = {
+    WORDS_KEY: [
+        {
+            QUESTION_KEY: ["No question"],
+            HIDDEN_WORD_KEY: ["TEST"]
+        },
+        {
+            QUESTION_KEY: ["No question"],
+            HIDDEN_WORD_KEY: ["TESTERS"]
+        },
+        {
+            QUESTION_KEY: ["No question"],
+            HIDDEN_WORD_KEY: ["TESTING"]
+        }
+    ]
+}
 
 # QUESTION STRUCTURE KEYS
 STATEMENT_KEY = "Pregunta"

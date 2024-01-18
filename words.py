@@ -23,12 +23,14 @@
 import tkinter as tk
 import ctypes
 import random
+import json
+import re
 import customtkinter as ctk
 import settings as cf
 from PIL import ImageTk
 
 class GameWordSearch(ctk.CTk):
-    def __init__(self, title_game = cf.GAME_NAME):
+    def __init__(self, title_game = cf.GAME_NAME, data = {}):
         super().__init__()
         self.title(title_game)
         self.color_ui = (cf.BG_COLOR_DARK, cf.BG_COLOR_LIGHT)
@@ -38,8 +40,9 @@ class GameWordSearch(ctk.CTk):
         )
 
         # setting header
+        self.data = data
         
-        self.game = GameFrame(self)
+        self.game = GameFrame(self, self.data)
 
         self.game.pack(
             side = tk.BOTTOM,
@@ -95,12 +98,15 @@ class GameHeaderFrame(ctk.CTkFrame):
         self.title.pack()
 
 class GameFrame(ctk.CTkFrame):
-    def __init__(self, master):
+    def __init__(self, master, data = cf.DEFAULT_DATA):
         super().__init__(
             master = master,
             fg_color = "transparent"
         )
-        self.words = ["PRUEBA", "PARA", "DESARROLLO", "EJEMPLO", "NOVEDAD", "PALABRA", "NUEVA", "CUESTION", "PROBLEMA", "SITUACION"]
+        self.data = data
+        print(data)
+        self.words = []
+        self.get_words()
         self.orientations = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]]
         self.columnconfigure(0, weight = 3)
         self.columnconfigure(1, weight = 1)
@@ -110,13 +116,18 @@ class GameFrame(ctk.CTkFrame):
 
         self.word_grid_frame = WordGridFrame(self, self.grid, self.words)
 
-        self.word_grid_frame.grid(row = 0, column = 0, sticky = "nsew")
+        self.word_grid_frame.grid(row = 0, column = 0, sticky = "nsew", padx = 5)
 
-        self.word_list_frame = ListWordsFrame(self, self.words)
+        self.word_list_frame = ListWordsFrame(self, self.data.get(cf.WORDS_KEY))
 
         self.word_grid_frame.bind("<<FoundWord>>", self.hide_question)
 
-        self.word_list_frame.grid(row = 0, column =1)
+        self.word_list_frame.grid(row = 0, column = 1, padx = 5)
+
+    def get_words(self):
+        for word_statement in self.data.get(cf.WORDS_KEY):
+            word = word_statement.get(cf.HIDDEN_WORD_KEY)[0]
+            self.words.append(word)
 
     def create_table(self):
         size = 20
@@ -178,13 +189,13 @@ class GameFrame(ctk.CTkFrame):
     def hide_question(self, event):
         print("Event done")
         word = self.word_grid_frame.last_word
-        self.word_list_frame.hide_question(self.words.index(word))
+        self.word_list_frame.hide_question(word)
 
 class WordGridFrame(ctk.CTkFrame):
     def __init__(self, master, plain_grid = [], word_list = []):
         super().__init__(
             master = master,
-            fg_color = "transparent"
+            fg_color = "transparent",
         )
         self.plain_grid = plain_grid
         self.word_list = word_list
@@ -202,7 +213,9 @@ class WordGridFrame(ctk.CTkFrame):
         cols = len(self.plain_grid[0])
         self.buttons = [[0 for _ in range(rows)] for __ in range(cols)]
         for y in range(rows):
+            self.grid_rowconfigure(y, weight = 1, uniform = "a")
             for x in range(cols):
+                self.grid_columnconfigure(x, weight = 1, uniform = "a")
                 text = self.plain_grid[y][x]
                 self.buttons[y][x] = ctk.CTkButton(
                     master = self,
@@ -210,6 +223,7 @@ class WordGridFrame(ctk.CTkFrame):
                     width = 3,
                     height = 1,
                     corner_radius = 0,
+                    text_color = ("#000000", "#ffffff"),
                     fg_color = "transparent",
                     hover_color = (cf.HOVER_COLOR_LIGHT, cf.HOVER_COLOR_DARK),
                     command = lambda x=x, y=y, t= text: self.button_pressing(x, y, t)
@@ -274,30 +288,36 @@ class WordGridFrame(ctk.CTkFrame):
         return self.current_selection["Direction"] == direction
 
 class ListWordsFrame(ctk.CTkFrame):
-    def __init__(self, master, word_list = []):
+    def __init__(self, master, data_word = cf.DEFAULT_DATA.get(cf.WORDS_KEY)):
         super().__init__(
             master = master,
             fg_color = "transparent"
         )
-        self.words = word_list
-        self.word_amount = len(self.words)
-        self.label_words = [0 for i in range(self.word_amount)]
+        self.data = data_word
+        self.label_words = dict()
         self.set_list()
 
     def set_list(self):
-        for i in range(self.word_amount):
-            self.label_words[i] = ctk.CTkLabel(
+        for word_statement in self.data:
+            word_name = word_statement.get(cf.HIDDEN_WORD_KEY)[0]
+            self.label_words[word_name] = ctk.CTkLabel(
                 master = self,
-                text = self.words[i],
-                fg_color = "transparent",
-                bg_color = "transparent"
+                wraplength = 300,
+                justify = "left",
+                corner_radius =  15,
+                text = word_statement.get(cf.QUESTION_KEY)[0],
+                fg_color = (cf.HOVER_COLOR_LIGHT, cf.HOVER_COLOR_DARK)
             )
-            self.label_words[i].pack()
+            self.label_words[word_name].pack(ipadx = 3, ipady = 3, pady = 3, fill = "x")
 
-    def hide_question(self, index):
-        self.label_words[index].configure(
+    def hide_question(self, word):
+        last_text = self.label_words[word].cget("text")
+        current_text = re.sub(r'_+', word, last_text)
+        self.label_words[word].configure(
+            text = current_text,
             fg_color = cf.SUCCESS_COLOR_LIGHT
         )
+        self.label_words[word].update()
     pass
 
         
@@ -308,7 +328,13 @@ def print_grid(grid):
     print()
 
 def run_game():
-    game = GameWordSearch()
+    # read json file and save
+    data = {}
+    with open("info.json", 'r', encoding="utf-8") as file:
+        info = json.load(file)
+        info = info["Opciones"]["Juegos"]["Opciones de juego"]["SopaLetras"]
+        data = info
+    game = GameWordSearch(data = data)
     game.run()
 
 if __name__ == "__main__":
