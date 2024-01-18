@@ -112,15 +112,11 @@ class GameFrame(ctk.CTkFrame):
 
         self.word_grid_frame.grid(row = 0, column = 0, sticky = "nsew")
 
-        self.title = ctk.CTkLabel(
-            master = self,
-            text = "Word Search",
-            fg_color = "transparent",
-            bg_color = "transparent",
-            font = ("Arial", 20)
-        )
+        self.word_list_frame = ListWordsFrame(self, self.words)
 
-        self.title.grid(row = 0, column = 1)
+        self.word_grid_frame.bind("<<FoundWord>>", self.hide_question)
+
+        self.word_list_frame.grid(row = 0, column =1)
 
     def create_table(self):
         size = 20
@@ -179,6 +175,11 @@ class GameFrame(ctk.CTkFrame):
     def render_table(self):
         pass
 
+    def hide_question(self, event):
+        print("Event done")
+        word = self.word_grid_frame.last_word
+        self.word_list_frame.hide_question(self.words.index(word))
+
 class WordGridFrame(ctk.CTkFrame):
     def __init__(self, master, plain_grid = [], word_list = []):
         super().__init__(
@@ -217,21 +218,24 @@ class WordGridFrame(ctk.CTkFrame):
     def button_pressing(self, x, y, text):
 
         self.buttons[y][x].configure(
-            bg_color = cf.SUCCESS_COLOR_LIGHT,
-            hover_color = (cf.SUCCESS_COLOR_LIGHT, cf.SUCCESS_COLOR_DARK)
+            bg_color = cf.SELECT_COLOR_LIGHT,
+            hover_color = (cf.SELECT_COLOR_LIGHT, cf.SELECT_COLOR_DARK)
         )
 
         if not self.is_adjacent(x,y) or not self.is_same_direction(x,y):
-            self.recolor_selection(cf.HOVER_COLOR_LIGHT, cf.HOVER_COLOR_DARK)
+            self.recolor_selection(cf.BG_COLOR_LIGHT, cf.BG_COLOR_DARK)
             self.current_selection["Word"] = ""
             self.current_selection["Positions"] = []
 
         self.current_selection["Word"] += text
         self.current_selection.get("Positions").append([x, y])
         if self.current_selection["Word"] in self.word_list:
-            self.event_generate("<<FoundWord>>")
-            self.recolor_selection(cf.HOVER_COLOR_LIGHT, cf.HOVER_COLOR_DARK)
+            print(self.current_selection["Word"])
+            self.last_word = self.current_selection["Word"]
+            self._canvas.event_generate("<<FoundWord>>")
+            self.recolor_selection(cf.SUCCESS_COLOR_LIGHT, cf.SUCCESS_COLOR_DARK)
             self.current_selection["Word"] = ""
+            self.current_selection["Positions"] = []
 
     def get_direction(self, first_xy, second_xy):
         x, y = second_xy[0] - first_xy[0], second_xy[1] - first_xy[1]
@@ -251,8 +255,7 @@ class WordGridFrame(ctk.CTkFrame):
         for position in self.current_selection.get("Positions"):
             x, y = position
             self.buttons[y][x].configure(
-                bg_color = "transparent",
-                hover_color = (light_color, dark_color)
+                bg_color = (light_color, dark_color),
             )
 
     def is_same_direction(self, x, y):
@@ -270,7 +273,31 @@ class WordGridFrame(ctk.CTkFrame):
 
         return self.current_selection["Direction"] == direction
 
-class ListWords():
+class ListWordsFrame(ctk.CTkFrame):
+    def __init__(self, master, word_list = []):
+        super().__init__(
+            master = master,
+            fg_color = "transparent"
+        )
+        self.words = word_list
+        self.word_amount = len(self.words)
+        self.label_words = [0 for i in range(self.word_amount)]
+        self.set_list()
+
+    def set_list(self):
+        for i in range(self.word_amount):
+            self.label_words[i] = ctk.CTkLabel(
+                master = self,
+                text = self.words[i],
+                fg_color = "transparent",
+                bg_color = "transparent"
+            )
+            self.label_words[i].pack()
+
+    def hide_question(self, index):
+        self.label_words[index].configure(
+            fg_color = cf.SUCCESS_COLOR_LIGHT
+        )
     pass
 
         
