@@ -28,6 +28,11 @@ GAMES_KEY = "Opciones de juego"
 QUESTION_KEY = "Enunciado"
 WORDS_KEY = "Palabras"
 HIDDEN_WORD_KEY = "Palabra"
+CONFIG_KEY = "Configuración"
+ROWS_KEY = "Filas"
+COLS_KEY = "Columnas"
+DIFFICULTY_KEY = "Dificultad"
+WEIGHTS_KEY = "Pesos"
 
 #DEFAULT VALUES
 DEFAULT_DATA = {
@@ -46,6 +51,7 @@ DEFAULT_DATA = {
         }
     ]
 }
+MAX_ITERATIONS = 200
 
 # QUESTION STRUCTURE KEYS
 STATEMENT_KEY = "Pregunta"

@@ -103,11 +103,18 @@ class GameFrame(ctk.CTkFrame):
             fg_color = "transparent"
         )
         self.data = data
-        print(data)
         self.words = []
         self.added_words = []
+        self.current_difficulty = "Fácil"
+        # self.current_difficulty = "Medio"
         self.get_words()
+        # This order is neccesary
         self.orientations = [[0, 1], [1, 1], [1, 0], [1, -1], [0, -1], [-1, -1], [-1, 0], [-1, 1]]
+        self.weights_orientations = [1 for _ in range(len(self.orientations))]
+        
+        possible_weight = self.get_real_values(cf.WEIGHTS_KEY)
+        if possible_weight is not None:
+            self.weights_orientations = possible_weight
 
         self.create_table()
         self.render_table()
@@ -129,21 +136,40 @@ class GameFrame(ctk.CTkFrame):
         for word_statement in self.data.get(cf.WORDS_KEY):
             word = word_statement.get(cf.HIDDEN_WORD_KEY)[0]
             self.words.append(word)
+    
+    def get_real_values(self, value_key):
+        config = self.data.get(cf.CONFIG_KEY)
+        if config is None:
+            return
+        config = config.get(cf.DIFFICULTY_KEY)
+        if config is None:
+            return
+        config = config.get(self.current_difficulty)
+        config = config.get(value_key)
+        if config is None:
+            return
+        else:
+            return config
 
     def create_table(self):
-        self.cols = 15
-        self.rows = 20
-        self.grid_struct = [['_' for _ in range(15)] for __ in range(20)]
-        print(len(self.grid_struct))
+        self.cols = self.get_real_values(cf.COLS_KEY)
+        self.rows = self.get_real_values(cf.ROWS_KEY)
+
+        if self.cols is None or self.rows is None:
+            self.cols = 20
+            self.rows = 20
+        
+        self.grid_struct = [['_' for _ in range(self.cols)] for __ in range(self.rows)]
 
         for word in self.words:
             word_length = len(word)
+            print(word)
+            if word_length > self.cols or word_length > self.rows:
+                print("Imposible")
+                continue
 
-            is_placed = False
-
-
-            while not is_placed:
-                orientation = random.choice(self.orientations)
+            for _ in range(cf.MAX_ITERATIONS):
+                orientation = random.choices(self.orientations, weights = self.weights_orientations)[0]
                 x_pos = random.randint(0, self.cols - 1)
                 y_pos = random.randint(0, self.rows - 1)
                 
@@ -159,6 +185,7 @@ class GameFrame(ctk.CTkFrame):
 
                 # We run through the characters of the word by a index and 
                 # we replace with it if is possible
+                aux_grid = self.grid_struct
                 for i in range(word_length):
                     current_x = x_pos + i * orientation[0]
                     current_y = y_pos + i * orientation[1]
@@ -175,7 +202,8 @@ class GameFrame(ctk.CTkFrame):
                         current_y = y_pos + i * orientation[1]
                         self.grid_struct[current_y][current_x] = word[i]
 
-                    is_placed = True
+                    self.added_words.append(word)
+                    break
 
         self.replace_blanks()
         print_grid(self.grid_struct)
@@ -201,7 +229,7 @@ class WordGridFrame(ctk.CTkFrame):
             fg_color = "transparent",
         )
         self.plain_grid = plain_grid
-        self.word_list = current_words
+        self.current_words = current_words
         self.current_selection = {
             "Positions": [],
             "Direction": [0, 0],
@@ -247,7 +275,7 @@ class WordGridFrame(ctk.CTkFrame):
         self.current_selection["Word"] += text
         self.current_selection.get("Positions").append([x, y])
         print(self.current_selection["Word"])
-        if self.current_selection["Word"] in self.word_list:
+        if self.current_selection["Word"] in self.current_words:
             print(self.current_selection["Word"])
             self.last_word = self.current_selection["Word"]
             self._canvas.event_generate("<<FoundWord>>")
@@ -298,12 +326,15 @@ class ListWordsFrame(ctk.CTkFrame):
             fg_color = "transparent",
         )
         self.data = data_word
+        self.current_words = current_words
         self.label_words = dict()
         self.set_list()
 
     def set_list(self):
         for word_statement in self.data:
             word_name = word_statement.get(cf.HIDDEN_WORD_KEY)[0]
+            if word_name not in self.current_words:
+                continue
             self.label_words[word_name] = ctk.CTkLabel(
                 master = self,
                 wraplength = 280,
