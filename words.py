@@ -49,7 +49,7 @@ class GameWordSearch(ctk.CTk):
             expand = True,
             padx = 20,
             pady = 15,
-            fill = "x"
+            fill = "both"
         )
 
         self.header = GameHeaderFrame(
@@ -58,7 +58,6 @@ class GameWordSearch(ctk.CTk):
         )
         self.header.pack(
             side = tk.BOTTOM,
-            expand = True,
             padx = 20,
             pady = 15,
             fill = "x"
@@ -89,7 +88,7 @@ class GameHeaderFrame(ctk.CTkFrame):
 
         self.title = ctk.CTkLabel(
             master = self,
-            text = "Word Search",
+            text = "Sopa de letras",
             fg_color = "transparent",
             bg_color = "transparent",
             font = ("Arial", 20)
@@ -106,23 +105,25 @@ class GameFrame(ctk.CTkFrame):
         self.data = data
         print(data)
         self.words = []
+        self.added_words = []
         self.get_words()
-        self.orientations = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]]
-        self.columnconfigure(0, weight = 3)
-        self.columnconfigure(1, weight = 1)
+        self.orientations = [[0, 1], [1, 1], [1, 0], [1, -1], [0, -1], [-1, -1], [-1, 0], [-1, 1]]
 
         self.create_table()
         self.render_table()
 
-        self.word_grid_frame = WordGridFrame(self, self.grid, self.words)
+        self.word_grid_frame = WordGridFrame(self, plain_grid = self.grid_struct, current_words = self.added_words)
 
-        self.word_grid_frame.grid(row = 0, column = 0, sticky = "nsew", padx = 5)
+        # self.word_grid_frame.grid(row = 0, column = 0, sticky = "nsew", padx = 5)
+        self.word_grid_frame.place(relx = 0, rely = 0, relwidth = 0.59, relheight = 1)
 
-        self.word_list_frame = ListWordsFrame(self, self.data.get(cf.WORDS_KEY))
+        self.word_list_frame = ListWordsFrame(self, data_word = self.data.get(cf.WORDS_KEY), current_words = self.added_words)
 
+        # self.word_list_frame.grid(row = 0, column = 1, padx = 5)
+        self.word_list_frame.place(relx = 0.60, rely = 0, relwidth = 0.4)
+
+        # Events
         self.word_grid_frame.bind("<<FoundWord>>", self.hide_question)
-
-        self.word_list_frame.grid(row = 0, column = 1, padx = 5)
 
     def get_words(self):
         for word_statement in self.data.get(cf.WORDS_KEY):
@@ -130,25 +131,28 @@ class GameFrame(ctk.CTkFrame):
             self.words.append(word)
 
     def create_table(self):
-        size = 20
-        self.grid = [['_' for _ in range(size)] for __ in range(size)]
+        self.cols = 15
+        self.rows = 20
+        self.grid_struct = [['_' for _ in range(15)] for __ in range(20)]
+        print(len(self.grid_struct))
 
         for word in self.words:
             word_length = len(word)
 
             is_placed = False
 
+
             while not is_placed:
                 orientation = random.choice(self.orientations)
-                x_pos = random.randint(0, size - 1)
-                y_pos = random.randint(0, size - 1)
+                x_pos = random.randint(0, self.cols - 1)
+                y_pos = random.randint(0, self.rows - 1)
                 
                 end_x = x_pos + word_length * orientation[0]
                 end_y = y_pos + word_length * orientation[1]
 
-                if end_x < 0 or end_x >= size:
+                if end_x < 0 or end_x >= self.cols:
                     continue
-                if end_y < 0 or end_y >= size:
+                if end_y < 0 or end_y >= self.rows:
                     continue
 
                 is_failed = False
@@ -158,30 +162,29 @@ class GameFrame(ctk.CTkFrame):
                 for i in range(word_length):
                     current_x = x_pos + i * orientation[0]
                     current_y = y_pos + i * orientation[1]
-                    if self.grid[current_y][current_x] != '_' and self.grid[current_y][current_x] != word[i]:
+                    if self.grid_struct[current_y][current_x] != '_' and self.grid_struct[current_y][current_x] != word[i]:
                         is_failed = True
                         break;
                         
-                # If we failed putting in the grid then we should do this again
+                # If we failed putting in the grid_struct then we should do this again
                 if is_failed:
                     continue
                 else:
                     for i in range(word_length):
                         current_x = x_pos + i * orientation[0]
                         current_y = y_pos + i * orientation[1]
-                        self.grid[current_y][current_x] = word[i]
+                        self.grid_struct[current_y][current_x] = word[i]
 
                     is_placed = True
 
         self.replace_blanks()
-        print_grid(self.grid)
+        print_grid(self.grid_struct)
 
     def replace_blanks(self):
-        size = len(self.grid)
-        for i in range(size):
-            for j in range(size):
-                if self.grid[i][j] == '_':
-                    self.grid[i][j] = random.choice("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+        for i in range(self.rows):
+            for j in range(self.cols):
+                if self.grid_struct[i][j] == '_':
+                    self.grid_struct[i][j] = random.choice("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
     def render_table(self):
         pass
@@ -192,13 +195,13 @@ class GameFrame(ctk.CTkFrame):
         self.word_list_frame.hide_question(word)
 
 class WordGridFrame(ctk.CTkFrame):
-    def __init__(self, master, plain_grid = [], word_list = []):
+    def __init__(self, master, plain_grid = [], current_words = []):
         super().__init__(
             master = master,
             fg_color = "transparent",
         )
         self.plain_grid = plain_grid
-        self.word_list = word_list
+        self.word_list = current_words
         self.current_selection = {
             "Positions": [],
             "Direction": [0, 0],
@@ -211,7 +214,7 @@ class WordGridFrame(ctk.CTkFrame):
     def set_grid(self):
         rows = len(self.plain_grid)
         cols = len(self.plain_grid[0])
-        self.buttons = [[0 for _ in range(rows)] for __ in range(cols)]
+        self.buttons = [[0 for _ in range(cols)] for __ in range(rows)]
         for y in range(rows):
             self.grid_rowconfigure(y, weight = 1, uniform = "a")
             for x in range(cols):
@@ -243,6 +246,7 @@ class WordGridFrame(ctk.CTkFrame):
 
         self.current_selection["Word"] += text
         self.current_selection.get("Positions").append([x, y])
+        print(self.current_selection["Word"])
         if self.current_selection["Word"] in self.word_list:
             print(self.current_selection["Word"])
             self.last_word = self.current_selection["Word"]
@@ -288,10 +292,10 @@ class WordGridFrame(ctk.CTkFrame):
         return self.current_selection["Direction"] == direction
 
 class ListWordsFrame(ctk.CTkFrame):
-    def __init__(self, master, data_word = cf.DEFAULT_DATA.get(cf.WORDS_KEY)):
+    def __init__(self, master, data_word = cf.DEFAULT_DATA.get(cf.WORDS_KEY), current_words = []):
         super().__init__(
             master = master,
-            fg_color = "transparent"
+            fg_color = "transparent",
         )
         self.data = data_word
         self.label_words = dict()
@@ -302,13 +306,13 @@ class ListWordsFrame(ctk.CTkFrame):
             word_name = word_statement.get(cf.HIDDEN_WORD_KEY)[0]
             self.label_words[word_name] = ctk.CTkLabel(
                 master = self,
-                wraplength = 300,
+                wraplength = 280,
                 justify = "left",
                 corner_radius =  15,
                 text = word_statement.get(cf.QUESTION_KEY)[0],
                 fg_color = (cf.HOVER_COLOR_LIGHT, cf.HOVER_COLOR_DARK)
             )
-            self.label_words[word_name].pack(ipadx = 3, ipady = 3, pady = 3, fill = "x")
+            self.label_words[word_name].pack(ipadx = 5, ipady = 3, pady = 3, fill = "x")
 
     def hide_question(self, word):
         last_text = self.label_words[word].cget("text")
@@ -327,7 +331,7 @@ def print_grid(grid):
         print(row)
     print()
 
-def run_game():
+def run_game(data = cf.DEFAULT_DATA):
     # read json file and save
     data = {}
     with open("info.json", 'r', encoding="utf-8") as file:
