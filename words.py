@@ -248,16 +248,11 @@ class WordGridFrame(ctk.CTkFrame):
             for x in range(cols):
                 self.grid_columnconfigure(x, weight = 1, uniform = "a")
                 text = self.plain_grid[y][x]
-                self.buttons[y][x] = ctk.CTkButton(
-                    master = self,
-                    text = text,
-                    width = 3,
-                    height = 1,
-                    corner_radius = 0,
-                    text_color = ("#000000", "#ffffff"),
-                    fg_color = "transparent",
-                    hover_color = (cf.HOVER_COLOR_LIGHT, cf.HOVER_COLOR_DARK),
-                    command = lambda x=x, y=y, t= text: self.button_pressing(x, y, t)
+                self.buttons[y][x] = LetterButton(
+                    master = self, 
+                    x_pos = x, 
+                    y_pos = y, 
+                    text = text
                 )
                 self.buttons[y][x].grid(row = y, column = x, sticky = "nsew")
     def button_pressing(self, x, y, text):
@@ -279,7 +274,7 @@ class WordGridFrame(ctk.CTkFrame):
             print(self.current_selection["Word"])
             self.last_word = self.current_selection["Word"]
             self._canvas.event_generate("<<FoundWord>>")
-            self.recolor_selection(cf.SUCCESS_COLOR_LIGHT, cf.SUCCESS_COLOR_DARK)
+            self.recolor_selection(cf.SUCCESS_COLOR_LIGHT, cf.SUCCESS_COLOR_DARK, correct_word = False)
             self.current_selection["Word"] = ""
             self.current_selection["Positions"] = []
 
@@ -297,12 +292,23 @@ class WordGridFrame(ctk.CTkFrame):
             return False
         return True
     
-    def recolor_selection(self, light_color, dark_color):
+    def recolor_selection(self, light_color, dark_color, correct_word = True):
         for position in self.current_selection.get("Positions"):
             x, y = position
+            if self.buttons[y][x].done_word is True:
+                self.buttons[y][x].configure(
+                    bg_color = (cf.SUCCESS_COLOR_LIGHT, cf.SUCCESS_COLOR_DARK)
+                )
+                
+                print(self.buttons[y][x].cget("text"))
+                print("I cant erase")
+                continue
             self.buttons[y][x].configure(
                 bg_color = (light_color, dark_color),
             )
+            if correct_word is False:
+                self.buttons[y][x].done_word = True
+            
 
     def is_same_direction(self, x, y):
         if len(self.current_selection.get("Positions")) == 1 or len(self.current_selection.get("Positions")) == 0:
@@ -353,8 +359,21 @@ class ListWordsFrame(ctk.CTkFrame):
             fg_color = cf.SUCCESS_COLOR_LIGHT
         )
         self.label_words[word].update()
-    pass
 
+class LetterButton(ctk.CTkButton):
+    def __init__(self, master, x_pos = 0, y_pos = 0, text = ""):
+        super().__init__(
+            master = master,
+            text = text,
+            width = 3,
+            height = 1,
+            corner_radius = 0,
+            text_color = ("#000000", "#ffffff"),
+            fg_color = "transparent",
+            hover_color = (cf.HOVER_COLOR_LIGHT, cf.HOVER_COLOR_DARK),
+            command = lambda x = x_pos, y = y_pos, t = text: master.button_pressing(x, y, t)
+        )
+        self.done_word = False
         
 
 def print_grid(grid):
