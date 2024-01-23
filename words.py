@@ -162,9 +162,9 @@ class GameHeaderFrame(ctk.CTkFrame):
 
         self.rowconfigure([0, 1], uniform = "a")
 
-        self.timer_label.grid(row = 0, column = 0, sticky = "w", rowspan = 2)
+        self.timer_label.grid(row = 0, column = 0, sticky = "w", rowspan = 2, padx = 20)
         self.title.grid(row = 0, column = 1, sticky = "nsew")
-        self.difficulty_combobox.grid(row = 0, column = 2, sticky = "e", rowspan = 2)
+        self.difficulty_combobox.grid(row = 0, column = 2, sticky = "e", rowspan = 2, padx = 20)
 
     def lose_game(self, event):
         self.info_label.configure(
@@ -175,6 +175,7 @@ class GameHeaderFrame(ctk.CTkFrame):
         self.master.game.disable_grid()
 
     def win_game(self, event):
+        self.timer_label.stop_timer()
         self.info_label.configure(
             text = "Ganaste, descubriste las palabras",
             fg_color = (cf.SUCCESS_COLOR_LIGHT, cf.SUCCESS_COLOR_DARK),
@@ -323,6 +324,7 @@ class GameFrame(ctk.CTkFrame):
         self.word_grid_frame.place_forget()
         self.word_list_frame.place_forget()
         self.render_words()
+        self.master.game.word_list_frame.bind("<<GameWon>>", self.master.header.win_game)
 
     def hide_question(self, event):
         word = self.word_grid_frame.last_word
@@ -482,6 +484,9 @@ class ListWordsFrame(ctk.CTkFrame):
             fg_color = (cf.SUCCESS_COLOR_LIGHT, cf.SUCCESS_COLOR_DARK),
         )
         self.counter_words += 1
+        print(word)
+        print("de la lista")
+        print(list(self.frame_scroll_questions.label_words.keys()))
         if self.counter_words >= len(self.current_words):
             self._canvas.event_generate("<<GameWon>>")
         self.frame_scroll_questions.label_words[word].update()
