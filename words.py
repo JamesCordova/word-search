@@ -560,10 +560,12 @@ def darken_color(hex_color, factor=0.7):
 def run_game(data = cf.DEFAULT_DATA):
     # read json file and save
     data = {}
-    with open("info.json", 'r', encoding="utf-8") as file:
-        info = json.load(file)
-        info = info["Opciones"]["Juegos"]["Opciones de juego"]["SopaLetras"]
-        data = info
+
+    if data is None:
+        with open("info.json", 'r', encoding="utf-8") as file:
+            info = json.load(file)
+            info = info["Opciones"]["Juegos"]["Opciones de juego"]["SopaLetras"]
+            data = info
     game = GameWordSearch(data = data)
     game.run()
 
