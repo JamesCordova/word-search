@@ -30,7 +30,7 @@ import settings as cf
 from PIL import ImageTk
 
 class GameWordSearch(ctk.CTk):
-    def __init__(self, title_game = cf.GAME_NAME, data = {}):
+    def __init__(self, title_game = cf.GAME_NAME, data = cf.DEFAULT_DATA):
         super().__init__()
         self.title(title_game)
         self.color_ui = (cf.BG_COLOR_DARK, cf.BG_COLOR_LIGHT)
@@ -54,7 +54,7 @@ class GameWordSearch(ctk.CTk):
 
         self.header = GameHeaderFrame(
             master = self,
-            data = {"nivel": 10}
+            data = data
         )
         self.header.pack(
             side = tk.BOTTOM,
@@ -86,6 +86,8 @@ class GameHeaderFrame(ctk.CTkFrame):
             fg_color = "transparent"
         )
 
+        self.data = data
+
         self.title = ctk.CTkLabel(
             master = self,
             text = "Sopa de letras",
@@ -95,6 +97,26 @@ class GameHeaderFrame(ctk.CTkFrame):
         )
 
         self.title.pack()
+        self.set_widgets()
+    
+    def set_widgets(self):
+        # Difficulty combobox
+        self.difficulty_combobox = ctk.CTkComboBox(
+            master = self,
+            bg_color = "transparent",
+            fg_color = (cf.BG_COLOR_LIGHT, cf.BG_COLOR_DARK),
+            border_color = (cf.BG_COLOR_LIGHT, cf.BG_COLOR_DARK),
+            button_color = (cf.HOVER_COLOR_LIGHT, cf.HOVER_COLOR_DARK),
+            button_hover_color = (cf.WIDGET_COLOR_LIGHT, cf.WIDGET_COLOR_DARK),
+            dropdown_fg_color = (cf.HOVER_COLOR_LIGHT, cf.HOVER_COLOR_DARK),
+            values = list(self.data.get(cf.CONFIG_KEY).get(cf.DIFFICULTY_KEY).keys()),
+            justify = "center",
+        )
+        # Timer
+        self.timer_label = TimerLabel(self, time = 100)
+        self.timer_label.start_timer()
+        self.difficulty_combobox.pack(side = tk.RIGHT)
+        self.timer_label.pack(side = tk.LEFT, padx = 10)
 
 class GameFrame(ctk.CTkFrame):
     def __init__(self, master, data = cf.DEFAULT_DATA):
@@ -374,12 +396,58 @@ class LetterButton(ctk.CTkButton):
             command = lambda x = x_pos, y = y_pos, t = text: master.button_pressing(x, y, t)
         )
         self.done_word = False
+
+class TimerLabel(ctk.CTkLabel):
+    def __init__(self, master, time = 60):
+        super().__init__(
+            master = master,
+            text = "00:00",
+            fg_color = (cf.BG_COLOR_LIGHT, cf.BG_COLOR_DARK),
+            bg_color = "transparent",
+        )
+        self.time = time
+        self.is_running = False
+
+    def start_timer(self):
+        self.is_running = True
+        self.update_timer()
+    
+    def stop_timer(self):
+        self.is_running = False
+        self.event_generate("<<Timeout>>")
+    
+    def update_timer(self):
+        if self.time < 0 or not self.is_running:
+            self.stop_timer()
+
+        minutes = self.time // 60
+        seconds = self.time % 60
+        time_to_str = f"{minutes}:{seconds:02}"
+        self.configure(
+            text = time_to_str
+        )
+        self.time -= 1
+
+        self.after(1000, self.update_timer)
         
 
 def print_grid(grid):
     for row in grid:
         print(row)
     print()
+
+def darken_color(hex_color, factor=0.7):
+    # Convert hexadecimal color to RGB
+    hex_color = hex_color.lstrip("#")
+    rgb = tuple(int(hex_color[i:i + 2], 16) for i in (0, 2, 4))
+
+    # Darken each RGB component
+    darkened_rgb = tuple(int(component * factor) for component in rgb)
+
+    # Convert back to hexadecimal
+    darkened_hex_color = "#{:02X}{:02X}{:02X}".format(*darkened_rgb)
+
+    return darkened_hex_color
 
 def run_game(data = cf.DEFAULT_DATA):
     # read json file and save
