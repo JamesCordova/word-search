@@ -33,9 +33,37 @@ ROWS_KEY = "Filas"
 COLS_KEY = "Columnas"
 DIFFICULTY_KEY = "Dificultad"
 WEIGHTS_KEY = "Pesos"
+TIME_KEY = "Tiempo"
 
 #DEFAULT VALUES
 DEFAULT_DATA = {
+    CONFIG_KEY:
+    {
+        DIFFICULTY_KEY:
+        {
+            "Fácil":
+            {
+                "Filas": 10,
+                "Columnas": 10,
+                "Tiempo": 100,
+                "Pesos": [0.3, 0.3, 0.3, 0.1, 0, 0, 0, 0]
+            },
+            "Medio":
+            {
+                "Filas": 15,
+                "Columnas": 15,
+                "Tiempo": 180,
+                "Pesos": [0.1, 0.1, 0.1, 0.3, 0.3, 0.1, 0, 0]
+            },
+            "Difícil":
+            {
+                "Filas": 20,
+                "Columnas": 20,
+                "Tiempo": 600,
+                "Pesos": [0.05, 0.05, 0.05, 0.05, 0.2, 0.2, 0.2, 0.2]
+            }
+        }
+    },
     WORDS_KEY: [
         {
             QUESTION_KEY: ["No question"],
@@ -51,6 +79,7 @@ DEFAULT_DATA = {
         }
     ]
 }
+DEFAULT_DIFFICULTY = "Fácil"
 MAX_ITERATIONS = 200
 
 # QUESTION STRUCTURE KEYS

@@ -30,7 +30,7 @@ import settings as cf
 from PIL import ImageTk
 
 class GameWordSearch(ctk.CTk):
-    def __init__(self, title_game = cf.GAME_NAME, data = cf.DEFAULT_DATA):
+    def __init__(self, title_game = cf.GAME_NAME, data = cf.DEFAULT_DATA, difficulty = cf.DEFAULT_DIFFICULTY):
         super().__init__()
         self.title(title_game)
         self.color_ui = (cf.BG_COLOR_DARK, cf.BG_COLOR_LIGHT)
@@ -41,8 +41,13 @@ class GameWordSearch(ctk.CTk):
 
         # setting header
         self.data = data
+        self.difficulty = difficulty
         
-        self.game = GameFrame(self, self.data)
+        self.game = GameFrame(
+            master = self,
+            data = self.data,
+            difficulty = self.difficulty
+        )
 
         self.game.pack(
             side = tk.BOTTOM,
@@ -54,7 +59,8 @@ class GameWordSearch(ctk.CTk):
 
         self.header = GameHeaderFrame(
             master = self,
-            data = data
+            data = data,
+            difficulty = self.difficulty
         )
         self.header.pack(
             side = tk.BOTTOM,
@@ -79,14 +85,20 @@ class GameWordSearch(ctk.CTk):
     def run(self):
         self.mainloop()
 
+    def reload_game(self, difficulty = cf.DEFAULT_DIFFICULTY):
+        self.game.reload_words(difficulty)
+        self.header.reload_timer()
+
+
 class GameHeaderFrame(ctk.CTkFrame):
-    def __init__(self, master, data):
+    def __init__(self, master, data = cf.DEFAULT_DATA, difficulty = cf.DEFAULT_DIFFICULTY):
         super().__init__(
             master = master,
             fg_color = "transparent"
         )
 
         self.data = data
+        self.current_difficulty = difficulty
 
         self.title = ctk.CTkLabel(
             master = self,
@@ -98,6 +110,21 @@ class GameHeaderFrame(ctk.CTkFrame):
 
         self.title.pack()
         self.set_widgets()
+        self.timer_label.bind("<<Timeout>>", self.lose_game)
+    
+    def get_real_time(self):
+        time = self.data.get(cf.CONFIG_KEY)
+        if time is None:
+            return
+        time = time.get(cf.DIFFICULTY_KEY)
+        if time is None:
+            return
+        time = time.get(self.current_difficulty)
+        time = time.get(cf.TIME_KEY)
+        if time is None:
+            return
+        else:
+            return time
     
     def set_widgets(self):
         # Difficulty combobox
@@ -111,15 +138,33 @@ class GameHeaderFrame(ctk.CTkFrame):
             dropdown_fg_color = (cf.HOVER_COLOR_LIGHT, cf.HOVER_COLOR_DARK),
             values = list(self.data.get(cf.CONFIG_KEY).get(cf.DIFFICULTY_KEY).keys()),
             justify = "center",
+            command = self.reload
         )
         # Timer
-        self.timer_label = TimerLabel(self, time = 100)
+        self.timer_label = TimerLabel(self, time = self.get_real_time())
         self.timer_label.start_timer()
+
         self.difficulty_combobox.pack(side = tk.RIGHT)
         self.timer_label.pack(side = tk.LEFT, padx = 10)
 
+    def lose_game(self, event):
+        self.info_label = ctk.CTkLabel(
+            master = self,
+            text = "Perdiste",
+            fg_color = (cf.ERROR_COLOR_LIGHT, cf.ERROR_COLOR_DARK),
+        )
+        self.master.game.disable_grid()
+    
+    def reload_timer(self):
+        self.timer_label.start_timer(time = self.get_real_time())
+    
+    def reload(self, event):
+        self.current_difficulty = self.difficulty_combobox.get()
+        self.master.reload_game(difficulty = self.current_difficulty)
+        self.reload_timer()
+
 class GameFrame(ctk.CTkFrame):
-    def __init__(self, master, data = cf.DEFAULT_DATA):
+    def __init__(self, master, data = cf.DEFAULT_DATA, difficulty = cf.DEFAULT_DIFFICULTY):
         super().__init__(
             master = master,
             fg_color = "transparent"
@@ -127,30 +172,13 @@ class GameFrame(ctk.CTkFrame):
         self.data = data
         self.words = []
         self.added_words = []
-        self.current_difficulty = "Fácil"
-        # self.current_difficulty = "Medio"
+        self.current_difficulty = difficulty
         self.get_words()
         # This order is neccesary
         self.orientations = [[0, 1], [1, 1], [1, 0], [1, -1], [0, -1], [-1, -1], [-1, 0], [-1, 1]]
         self.weights_orientations = [1 for _ in range(len(self.orientations))]
-        
-        possible_weight = self.get_real_values(cf.WEIGHTS_KEY)
-        if possible_weight is not None:
-            self.weights_orientations = possible_weight
 
-        self.create_table()
-        self.render_table()
-
-        self.word_grid_frame = WordGridFrame(self, plain_grid = self.grid_struct, current_words = self.added_words)
-
-        # self.word_grid_frame.grid(row = 0, column = 0, sticky = "nsew", padx = 5)
-        self.word_grid_frame.place(relx = 0, rely = 0, relwidth = 0.59, relheight = 1)
-
-        self.word_list_frame = ListWordsFrame(self, data_word = self.data.get(cf.WORDS_KEY), current_words = self.added_words)
-
-        # self.word_list_frame.grid(row = 0, column = 1, padx = 5)
-        self.word_list_frame.place(relx = 0.60, rely = 0, relwidth = 0.4)
-
+        self.render_words()
         # Events
         self.word_grid_frame.bind("<<FoundWord>>", self.hide_question)
 
@@ -185,9 +213,7 @@ class GameFrame(ctk.CTkFrame):
 
         for word in self.words:
             word_length = len(word)
-            print(word)
             if word_length > self.cols or word_length > self.rows:
-                print("Imposible")
                 continue
 
             for _ in range(cf.MAX_ITERATIONS):
@@ -236,11 +262,34 @@ class GameFrame(ctk.CTkFrame):
                 if self.grid_struct[i][j] == '_':
                     self.grid_struct[i][j] = random.choice("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
-    def render_table(self):
-        pass
+    def render_words(self):
+        possible_weight = self.get_real_values(cf.WEIGHTS_KEY)
+        if possible_weight is not None:
+            self.weights_orientations = possible_weight
+
+        self.create_table()
+
+        self.word_grid_frame = WordGridFrame(self, plain_grid = self.grid_struct, current_words = self.added_words)
+
+        # self.word_grid_frame.grid(row = 0, column = 0, sticky = "nsew", padx = 5)
+        self.word_grid_frame.place(relx = 0, rely = 0, relwidth = 0.59, relheight = 1)
+
+        self.word_list_frame = ListWordsFrame(self, data_word = self.data.get(cf.WORDS_KEY), current_words = self.added_words)
+
+        # self.word_list_frame.grid(row = 0, column = 1, padx = 5)
+        self.word_list_frame.place(relx = 0.60, rely = 0, relwidth = 0.4)
+
+    def disable_grid(self):
+        for child in self.word_grid_frame.winfo_children():
+            child.configure(state = "disabled")
+
+    def reload_words(self, difficulty = cf.DEFAULT_DIFFICULTY):
+        self.current_difficulty = difficulty
+        self.word_grid_frame.place_forget()
+        self.word_list_frame.place_forget()
+        self.render_words()
 
     def hide_question(self, event):
-        print("Event done")
         word = self.word_grid_frame.last_word
         self.word_list_frame.hide_question(word)
 
@@ -321,9 +370,6 @@ class WordGridFrame(ctk.CTkFrame):
                 self.buttons[y][x].configure(
                     bg_color = (cf.SUCCESS_COLOR_LIGHT, cf.SUCCESS_COLOR_DARK)
                 )
-                
-                print(self.buttons[y][x].cget("text"))
-                print("I cant erase")
                 continue
             self.buttons[y][x].configure(
                 bg_color = (light_color, dark_color),
@@ -404,21 +450,29 @@ class TimerLabel(ctk.CTkLabel):
             text = "00:00",
             fg_color = (cf.BG_COLOR_LIGHT, cf.BG_COLOR_DARK),
             bg_color = "transparent",
+            font = ("Arial", 20)
         )
+        self.bound_time = time
         self.time = time
         self.is_running = False
 
-    def start_timer(self):
+    def start_timer(self, time = None):
         self.is_running = True
+        if time is not None:
+            self.bound_time = time
+            self.time = time
+        else:
+            self.time = self.bound_time
         self.update_timer()
     
     def stop_timer(self):
         self.is_running = False
-        self.event_generate("<<Timeout>>")
+        self._canvas.event_generate("<<Timeout>>")
     
     def update_timer(self):
         if self.time < 0 or not self.is_running:
             self.stop_timer()
+            return
 
         minutes = self.time // 60
         seconds = self.time % 60
